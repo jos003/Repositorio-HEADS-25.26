@@ -1,0 +1,124 @@
+---
+title: "Reliability and agreement exercises"
+author: "João Silva"
+date: "2025-11-04"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Reliability and agreement exercises
+
+## Introduction
+
+A table of data agree.sav contains information on the diagnosis of a particular condition (1=yes or 0=no) of 54 children and on the development measurement in the same children.
+
+The diagnosis was made independently by five different doctors (variables: doctor1, doctor2, doctor3, doctor4 and doctor5) and the development score was assessed by the same psychologist using two different battery of tests (variables: test1 and test2).
+
+1. Assess the inter-rater agreement and reliably among doctors.
+
+2. Are the two development tests intersubstitutable?
+
+## Install and load packages: foreignm obs-agree, psy, boot
+
+```{r, results='hide', include= FALSE}
+# CRAN packages list
+cran_packages <- c("foreign", "psy", "boot","tidyverse")
+
+# Install only CRAN packages that are not already installed
+for (pkg in cran_packages) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    install.packages(pkg)
+  }
+}
+
+# Check and install obs.agree if necessary
+if (!requireNamespace("obs.agree", quietly = TRUE)) {
+  install.packages("obs.agree_1.0.tar", repos = NULL, type = "source")
+}
+
+# Load all packages
+all_packages <- c(cran_packages, "obs.agree")
+lapply(all_packages, library, character.only = TRUE)
+```
+
+
+## Get data from SPSS file
+
+```{r}
+# Read the SPSS file named "agree.sav" using the read.spss function from the 'foreign' package
+# The parameter use.missing=TRUE indicates that missing values in SPSS should be preserved
+# After file=, you must enter the path to the agree.sav file on your computer.
+agree <- read.spss(file="agree.sav", use.missing=TRUE)
+# Convert the 'agree' object (which is a special 'data.frame' class from read.spss) into a standard R data.frame
+# This ensures compatibility with other functions that expect a common data.frame
+agree <- as.data.frame(agree)
+# Convert the 'agree' data.frame into a data matrix (data.matrix)
+# This transforms all columns into numeric types if possible, creating a numeric matrix
+# Useful for analyses requiring matrix data, but may lose factor labels or strings
+agree <- data.matrix(agree)
+```
+
+## Get data from SPSS file (from haven package in tidyverse)
+
+```{r}
+#agree <- haven::read_sav("agree.sav")
+```
+
+
+## Question 1: assess the inter-rater agreement and reliability among doctors
+
+### To asssess the agreement: Proportions of overall and specific agreement 
+
+```{r}
+RAI(agree[,c(1,2,3,4,5)])
+```
+
+
+If one doctor, selected at random, makes a diagnosis (particular condition present: yes or no), the probability of another doctor making an equal diagnosis is 0.896
+
+If one doctor, selected at random, makes the diagnosis yes (the particular condition is present), the probability of another doctor making the same diagnosis is 0.942
+
+If one doctor, selected at random, makes the diagnosis no (the particular condition is not present), the probability of another doctor making the same diagnosis is 0.517
+
+# To assess reliability: Kappa 
+
+```{r}
+lkappa(agree[,c(1,2,3,4,5)])
+```
+The reliability of raters was K=0.473.
+
+```{r}
+lkappa.boot <- function(data,x) {lkappa(data[x,])}
+res <- boot(agree[,c(1,2,3,4,5)],lkappa.boot,1000)
+boot.ci(res,type="bca")
+```
+
+
+## Question 2: to know if the tests are intersubstitutable you can do the Bland and Altaman limits of agreemnt (try it with JAMOVI :-) )
+
+### It is also possible to assess the reliability of scores obtained by the two testes using the Intraclass Correlation coefficient, ranging from 0 (no reliability) to 1 (maximum reliability).
+
+```{r}
+icc(agree[,c(6,7)])
+```
+
+### It is also possible to assess the disagreement of scores obtained by the testes using the Information Based Measure of disagreement ranging from 0 (no disagreement=total agreement) to 1 (maximum disagreement).
+
+```{r}
+IBMD(agree[,c(6,7)])
+```
+
+# Bland and Altman
+
+```{r}
+devtools::install_github("deepankardatta/blandr")
+library(blandr) 
+library(ggplot2) 
+blandr.statistics ( agree$test1 , agree$test2 , sig.level=0.95 ) 
+blandr.draw ( agree$test1 , agree$test2 , plotter='rplot' )
+```
+
+
