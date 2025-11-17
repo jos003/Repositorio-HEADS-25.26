@@ -1,0 +1,292 @@
+---
+title: "Descriptive Statistics - Exercices"
+author: "João Silva"
+date: "2025-11-10"
+output: html_document
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#install.packages(c("tidyverse", "gmodels", "table1", "readxl", "haven"))
+library(tidyverse)
+library(gmodels)
+library(table1)
+library(readxl)
+library(haven)
+```
+
+
+# A. Develop data
+
+The table of data develop contains information on the development at age
+5 and 8 of 39 children with a particular condition. To measure the
+child’s development a scale measuring the overall development is used.
+This scale is divided into 5 subscales: motor development, social
+development, hearing-language development, hand-eye and practical
+performance. In addition to child development at age 5 and 8, it was
+also noted whether or not children had anemia before age 5 and the
+socioeconomic class of the child's household.
+
+Na tabela de dados registamos as seguintes variáveis:\
+• **id** – child identification number in the study\
+• **general1**- overall coefficient of development scale at 5 years\
+• **general2**- overall coefficient of development scale at 8 years\
+• **motor1**- motor coefficient of development scale at 5 years\
+• **motor2**- motor coefficient of development scale at 8 years\
+• **social1**- social coefficient of development scale at 5 years\
+• **social2**- social coefficient of development scale at 8 years\
+• **earlang 1**- hearing-language coefficient of development scale at 5 years\
+• **earlang 2**- hearing-language coefficient of development scale at 8 years\
+• **eyehand 1**- hand-eye coefficient of development scale at 5 years\
+• **eyehand 2**- hand-eye coefficient of development scale at 8 years\
+• **perf 1**- performance coefficient of development scale at 5 years\
+• **perf 2**- performance coefficient of development scale at 8 years\
+• **group** – child with Anemia? (1-“Anemic”: with anemia before 5 years /2-“Non
+Anemic”: without anemia before 5 years)\
+• **soclass** – Socioeconomic class (1-“high”; /2-“Medium” /3-“Low”)\
+
+Each question should have as answer ONE single table, each table should present the
+summary measures of the variables studied for each of the compared groups.
+
+## 1. Will there be differences between the children of the three socioeconomic class groups with regard to general development and the various developmental subscales at age 8?
+
+```{r}
+develop <- read.csv("C:/Users/João/OneDrive - Instituto Politécnico do Porto/Doutoramento/Repositório HEADS 25.26/Repositorio-HEADS-25.26/ANALYZE/develop.csv")
+par(mfrow=c(2,3))
+hist(develop$general2, main="General 8 years")
+hist(develop$motor2, main="Motor 8 years") 
+hist(develop$social2, main="Social 8 years")
+hist(develop$earlang2, main="Ear-Language 8 years") 
+hist(develop$eyehand2, main="Eye-Hand 8 years")
+hist(develop$perf2, main="Performance 8 years")
+```
+```{r}
+# Rename the soclass variable with labels
+develop$soclass <- factor(develop$soclass, levels=3:1, labels=c("Low","Medium","High"))
+# Rename the group variable with labels
+develop$group <- factor(develop$group, levels=1:2, labels=c("Anemic", "Not Anemic"))
+# Rename the columns of develop data frame
+colnames(develop) <- c("id", "general1", "general2", "motor1", "motor2", "social1", "social2", "earlang1", "earlang2", "eyehand1", "eyehand2", "perf1", "perf2", "group", "soclass")
+# Create table 1 to see differences between the children of the three socioeconomic class groups with regard to general development and the various developmental subscales at age 8
+table1 (~ general2 + motor2 + social2 + earlang2 + eyehand2 + perf2 | soclass, data=develop)
+```
+
+
+## 2. Between 5 and 8 years was there a difference (rise or fall) in overall development and the various development subscales?
+
+```{r}
+# Create column with age (5 or 8 years)
+develop_long <- develop %>% pivot_longer(cols = c(general1, general2, motor1, motor2, social1, social2, earlang1, earlang2, eyehand1, eyehand2, perf1, perf2),
+                                         names_to = c(".value", "age"),
+                                         names_pattern = "(.*)([12])")
+# Rename age values
+develop_long$age <- factor(develop_long$age, levels=c("1", "2"), labels=c("5 years", "8 years"))
+# Rename the columns of develop_long data frame
+colnames(develop_long) <- c("id", "group", "soclass", "age", "general", "motor", "social", "earlang", "eyehand", "perf")
+# Create table 1 to see differences between 5 and 8 years in overall development and the various development subscales
+table1 (~ general + motor + social + earlang + eyehand + perf | age, data=develop_long)
+```
+
+## 3. Will there be differences between children in both groups (with anemia before 5 or without anemia before 5) regarding the various developmental scale coefficients at 5 years?
+
+```{r}
+# Create table 1 to see differences between children in both groups (with anemia before 5 or without anemia before 5) regarding the various developmental scale coefficients at 5 years
+table1 (~ general1 + motor1 + social1 + earlang1 + eyehand1 + perf1 | group, data=develop)
+```
+
+## 4. Will there be differences in the proportion of above / below average children on the 5-year old overall developmental scale between children in both groups (with anemia before 5 or without anemia before 5)? And at 8 years?
+
+```{r}
+# Create a new variable overall_average_5 with above/below average labels
+develop <- develop %>% mutate(overall_average_5 = ifelse(general1<mean(general1), "below", "=orabove"))
+# Create table to see differences in the proportion of above / below average children on the 5-year old overall developmental scale between children in both groups (with anemia before 5 or without anemia before 5)
+CrossTable(develop$group, develop$overall_average_5, format="SPSS", prop.chisq=F, prop.c=F, prop.t=F, digits=1)
+# Create a new variable overall_average_8 with above/below average labels
+develop <- develop %>% mutate(overall_average_8 = ifelse(general2<mean(general2), "below", "=orabove"))
+# Create table to see differences in the proportion of above / below average children on the 8-year old overall developmental scale between children in both groups (with anemia before 8 or without anemia before 8)
+CrossTable(develop$group, develop$overall_average_8, format="SPSS", prop.chisq=F, prop.c=F, prop.t=F, digits=1)
+```
+
+# B. Nutricao data
+
+This 58-record data table contains data for babies at birth and after nine months.
+
+## 1. Graph the variable length at birth (comp)
+
+```{r}
+# Read nutricao.sav
+nutricao <- read_sav("C:/Users/João/OneDrive - Instituto Politécnico do Porto/Doutoramento/Repositório HEADS 25.26/Repositorio-HEADS-25.26/ANALYZE/nutricao.sav")
+# Graph the variable length at birth (comp)
+hist(nutricao$comp, main="Length at Birth", xlab="Length (cm)")
+```
+
+## 2. Describe the variable length at birth (comp) using the most appropriate summary measures.
+
+```{r}
+# Describe the variable length at birth (comp) using the most appropriate summary measures
+mean_length <- mean(nutricao$comp, na.rm = T)
+sd_length <- sd(nutricao$comp, na.rm = T)
+summary_length <- data.frame(Mean = mean_length, SD = sd_length)
+summary_length
+```
+
+## 3. Graph the ferritin variable at 9 months (ferrit9)
+
+```{r}
+# Graph the ferritin variable at 9 months (ferrit9)
+hist(nutricao$ferrit9, main="Ferritin at 9 months", xlab="Ferritin (ng/mL)")
+```
+
+## 4. Describe the ferritin variable at 9 months (ferrit9) using the most appropriate summary measures.
+
+```{r}
+# Describe the ferritin variable at 9 months (ferrit9) using the most appropriate summary measures
+median_ferritin <- median(nutricao$ferrit9, na.rm = T)
+IQR_ferritin <- IQR(nutricao$ferrit9, na.rm = T)
+summary_ferritin <- data.frame(Median = median_ferritin, IQR = IQR_ferritin)
+summary_ferritin
+```
+
+## 5. Describe in each table each of the categorical variables: national vaccination program (PNV) and graffar index (graffar)
+
+```{r}
+# Describe the national vaccination program variable (pnv)
+table_pnv <- table(nutricao$pnv)
+prop_table_pnv <- prop.table(table_pnv)
+table_pnv_df <- data.frame(Count = as.vector(table_pnv), Proportion = as.vector(prop_table_pnv))
+rownames(table_pnv_df) <- names(table_pnv)
+table_pnv_df
+# Describe the graffar index variable (graffar)
+table_graffar <- table(nutricao$graffar)
+prop_table_graffar <- prop.table(table_graffar)
+table_graffar_df <- data.frame(Count = as.vector(table_graffar), Proportion = as.vector(prop_table_graffar))
+rownames(table_graffar_df) <- names(table_graffar)
+table_graffar_df
+```
+
+## 6. Describe in a contingency table the national vaccination program variable (pnv) as a function of the graffar index variable
+
+```{r}
+# Create a contingency table of national vaccination program (pnv) as a function of graffar index
+CrossTable(nutricao$pnv, nutricao$graffar, format="SPSS", prop.chisq=F, digits=1)
+```
+
+## 7. Graphically and wisely represent each of the categorical variables: national vaccination program (pnv) and graffar index (graffar)
+
+```{r}
+# Graphically represent the national vaccination program variable (pnv)
+par(mfrow=c(1,2))
+pie(table(nutricao$pnv), main="National Vaccination Program (PNV)")
+barplot(table(nutricao$graffar), main="Graffar Index", xlab="Graffar Categories", ylab="Frequency")
+```
+
+## 8. Recode the variable number months with breastfeeding (leitemat) to make it a dichotomous variable (1 = 'less than 9 months', 2 = '9 months')
+
+```{r}
+# Recode the variable number months with breastfeeding (leitemat) to make it a dichotomous variable
+nutricao <- nutricao %>% mutate(leitemat_cat = ifelse(leitemat < 9, "less than 9 months", "9 months"))
+# View the recoded variable
+table(nutricao$leitemat_cat)
+```
+
+## 9. Graph the birth weight variable (birthwt) in male and female newborns (sex)
+
+```{r}
+# Graph the birth weight variable (birthwt) in male and female newborns (sex)
+boxplot(birthwt ~ sex, data = nutricao, main="Birth Weight by Sex", xlab="Sex", ylab="Birth Weight (g)", names=c("Female", "Male"))
+```
+
+## 10. Graph the weight variable at 9 months (weight9) in babies taking vitamin C (vitc) and with the updated national vaccination plan (pnv)
+
+```{r}
+# Graph the weight variable at 9 months (weight9) in babies taking vitamin C (vitc) and with the updated national vaccination plan (pnv)
+nutricao <- nutricao %>% mutate(vitc_label = ifelse(vitc == 1, "Taking Vitamin C", "Not Taking Vitamin C"),
+                                pnv_label = ifelse(pnv == 1, "Updated PNV", "Not Updated PNV"))
+par(mfrow=c(1,2))
+boxplot(weight9 ~ vitc_label, data = nutricao, main="Weight at 9 months by Vitamin C", xlab="Vitamin C Status", ylab="Weight at 9 months (g)")
+boxplot(weight9 ~ pnv_label, data = nutricao, main="Weight at 9 months by PNV", xlab="PNV Status", ylab="Weight at 9 months (g)")
+```
+
+## 11. Create and graph the weight gain (inc_weight) variable that corresponds to the weight gain from birth (birthwt) to 9 months (weight9)
+
+```{r}
+# Create the weight gain (inc_weight) variable
+nutricao <- nutricao %>% mutate(inc_weight = weight9 - birthwt)
+# Graph the weight gain (inc_weight) variable
+hist(nutricao$inc_weight, main="Weight Gain from Birth to 9 months", xlab="Weight Gain (g)")
+```
+
+# C. Sepsis data
+
+This table of data with 300 records contains data related to sepsis admissions in Portuguese ICUs. Variables:\
+• Hospitalization Id\
+• Sex of the hospitalized: 1-Female; 2-Male\
+• Date of birth of the hospitalized\
+• Date of entry into the ICU\
+• Date of exit from the ICU\
+• Date of exit from hospital
+• Hospitalization Result: 1-Survivor; 2-Deceased in ICU; 3-Deceased in hospital\
+• Age at ICU entry\
+• Length of stay\
+
+## 1. Transfer this database to R and describe (graphically and with appropriate summary measures) the age at ICU admission and the length of stay in the ICU.
+
+```{r}
+#Open the data uci_sepsis.xls
+uci_sepsis <- read_excel("C:/Users/João/OneDrive - Instituto Politécnico do Porto/Doutoramento/Repositório HEADS 25.26/Repositorio-HEADS-25.26/ANALYZE/uci_sepsis.xls")
+# Rename the columns
+colnames(uci_sepsis) <- c("id_hospitalizacao", "sexo", "data_nascimento", "data_entrada_uci", "data_saida_uci","data_saida_hospital", "resultado_internamento")
+# Convert date columns to Date type with lubridate as_date
+uci_sepsis <- uci_sepsis %>%
+  mutate(data_nascimento = dmy(data_nascimento),
+         data_entrada_uci = dmy(data_entrada_uci),
+         data_saida_uci = dmy(data_saida_uci),
+         data_saida_hospital = dmy(data_saida_hospital))
+# Create variables idade_entrada_uci and tempo_internamento_uci
+uci_sepsis <- uci_sepsis %>%
+  mutate(idade_entrada_uci = as.numeric(difftime(data_entrada_uci, data_nascimento, units = "weeks")) / 52.25,
+         tempo_internamento_uci = as.numeric(difftime(data_saida_uci, data_entrada_uci, units = "days")))
+#Graphically represent the age at ICU admission and the length of stay in the ICU
+par(mfrow=c(1,2))
+hist(uci_sepsis$idade_entrada_uci, main="Age at ICU admission",xlab="")
+hist(uci_sepsis$tempo_internamento_uci, main="Length of stay in ICU", xlab="")
+```        
+
+
+```{r}
+#Descrition of the age at ICU admission and the length of stay in the ICU with appropriate summary measures
+#mean(uci_sepsis$idade_entrada_uci, na.rm = T)
+#sd(uci_sepsis$idade_entrada_uci, na.rm = T)
+#mean(uci_sepsis$tempo_internamento_uci, na.rm = T)
+#sd(uci_sepsis$tempo_internamento_uci, na.rm = T)
+# Table with the means and standard deviations of age at ICU admission and length of stay in ICU
+table <- uci_sepsis %>% summarise (mean_age = mean(idade_entrada_uci, na.rm = T), sd_age = sd(idade_entrada_uci, na.rm = T),
+                          mean_stay = mean(tempo_internamento_uci, na.rm = T), sd_stay = sd(tempo_internamento_uci, na.rm = T))
+# Rename table columns
+colnames(table) <- c("Mean Age at ICU Admission", "SD Age at ICU Admission", "Mean Length of Stay in ICU", "SD Length of Stay in ICU")
+table
+```
+
+## 2. What is the proportion of deceased in the female patient group and in the male patient group?
+
+```{r}
+# Create a new variable sexo_label with labels for the sexo variable
+uci_sepsis <- uci_sepsis %>% mutate(sexo_label = ifelse(sexo == 1, "Female", "Male"))
+# Create a new variable resultado_label with labels for the resultado_internamento variable
+uci_sepsis <- uci_sepsis %>% mutate(resultado_label = case_when(
+  resultado_internamento == 1 ~ "Survivor",
+  resultado_internamento == 2 ~ "Deceased in ICU",
+  resultado_internamento == 3 ~ "Deceased in Hospital"
+))
+# Create a column with survivor and deceased labels
+uci_sepsis <- uci_sepsis %>% mutate(survivor_deceased = ifelse(resultado_internamento == 1, "Survivor", "Deceased"))
+# Create a contingency table with the proportions of deceased in the female and male patient groups
+CrossTable(uci_sepsis$sexo_label, uci_sepsis$survivor_deceased, format="SPSS", prop.chisq=F, prop.c=F, prop.t=F, digits=1)
+```
+
