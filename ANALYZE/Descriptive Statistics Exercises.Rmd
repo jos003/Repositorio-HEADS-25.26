@@ -2,7 +2,7 @@
 title: "Descriptive Statistics - Exercices"
 author: "João Silva"
 date: "2025-11-10"
-output: html_document
+output: pdf_document
 editor_options: 
   markdown: 
     wrap: 72
@@ -12,13 +12,14 @@ editor_options:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r}
-#install.packages(c("tidyverse", "gmodels", "table1", "readxl", "haven"))
+```{r,warning = F,message = F}
+#install.packages(c("tidyverse", "gmodels", "table1", "readxl", "haven","kableExtra"))
 library(tidyverse)
 library(gmodels)
 library(table1)
 library(readxl)
 library(haven)
+library(kableExtra)
 ```
 
 
@@ -56,15 +57,17 @@ summary measures of the variables studied for each of the compared groups.
 
 ## 1. Will there be differences between the children of the three socioeconomic class groups with regard to general development and the various developmental subscales at age 8?
 
+
 ```{r}
-develop <- read.csv("C:/Users/João/OneDrive - Instituto Politécnico do Porto/Doutoramento/Repositório HEADS 25.26/Repositorio-HEADS-25.26/ANALYZE/develop.csv")
+develop <- read.csv("develop.csv")
+# mfrow to plot multiple histograms. 2 rows and 3 columns.
 par(mfrow=c(2,3))
-hist(develop$general2, main="General 8 years")
-hist(develop$motor2, main="Motor 8 years") 
-hist(develop$social2, main="Social 8 years")
-hist(develop$earlang2, main="Ear-Language 8 years") 
-hist(develop$eyehand2, main="Eye-Hand 8 years")
-hist(develop$perf2, main="Performance 8 years")
+hist(develop$general2, main="General 8 years",xlab="")
+hist(develop$motor2, main="Motor 8 years", xlab="") 
+hist(develop$social2, main="Social 8 years", xlab="")
+hist(develop$earlang2, main="Ear-Language 8 years", xlab="") 
+hist(develop$eyehand2, main="Eye-Hand 8 years", xlab="")
+hist(develop$perf2, main="Performance 8 years", xlab="")
 ```
 ```{r}
 # Rename the soclass variable with labels
@@ -105,12 +108,12 @@ table1 (~ general1 + motor1 + social1 + earlang1 + eyehand1 + perf1 | group, dat
 ```{r}
 # Create a new variable overall_average_5 with above/below average labels
 develop <- develop %>% mutate(overall_average_5 = ifelse(general1<mean(general1), "below", "=orabove"))
-# Create table to see differences in the proportion of above / below average children on the 5-year old overall developmental scale between children in both groups (with anemia before 5 or without anemia before 5)
-CrossTable(develop$group, develop$overall_average_5, format="SPSS", prop.chisq=F, prop.c=F, prop.t=F, digits=1)
+# Create table to see differences in the proportion of above / below average children on the 5-year old overall developmental scale between children in both groups (with anemia before 5 or without anemia before 5). dnn = dimension names
+CrossTable(develop$group, develop$overall_average_5, format="SPSS", prop.chisq=F, prop.c=F, prop.t=F, digits=1, dnn = c("Group", "Overall Average 5 years"))
 # Create a new variable overall_average_8 with above/below average labels
 develop <- develop %>% mutate(overall_average_8 = ifelse(general2<mean(general2), "below", "=orabove"))
 # Create table to see differences in the proportion of above / below average children on the 8-year old overall developmental scale between children in both groups (with anemia before 8 or without anemia before 8)
-CrossTable(develop$group, develop$overall_average_8, format="SPSS", prop.chisq=F, prop.c=F, prop.t=F, digits=1)
+CrossTable(develop$group, develop$overall_average_8, format="SPSS", prop.chisq=F, prop.c=F, prop.t=F, digits=1, dnn = c("Group", "Overall Average 8 years"))
 ```
 
 # B. Nutricao data
@@ -121,7 +124,7 @@ This 58-record data table contains data for babies at birth and after nine month
 
 ```{r}
 # Read nutricao.sav
-nutricao <- read_sav("C:/Users/João/OneDrive - Instituto Politécnico do Porto/Doutoramento/Repositório HEADS 25.26/Repositorio-HEADS-25.26/ANALYZE/nutricao.sav")
+nutricao <- read_sav("nutricao.sav")
 # Graph the variable length at birth (comp)
 hist(nutricao$comp, main="Length at Birth", xlab="Length (cm)")
 ```
@@ -174,7 +177,7 @@ table_graffar_df
 
 ```{r}
 # Create a contingency table of national vaccination program (pnv) as a function of graffar index
-CrossTable(nutricao$pnv, nutricao$graffar, format="SPSS", prop.chisq=F, digits=1)
+CrossTable(nutricao$pnv, nutricao$graffar, format="SPSS", prop.chisq=F, digits=1, dnn = c("National Vaccination Program", "Graffar Index"))
 ```
 
 ## 7. Graphically and wisely represent each of the categorical variables: national vaccination program (pnv) and graffar index (graffar)
@@ -195,29 +198,29 @@ nutricao <- nutricao %>% mutate(leitemat_cat = ifelse(leitemat < 9, "less than 9
 table(nutricao$leitemat_cat)
 ```
 
-## 9. Graph the birth weight variable (birthwt) in male and female newborns (sex)
+## 9. Graph the birth weight variable (pn) in male and female newborns (sex)
 
 ```{r}
-# Graph the birth weight variable (birthwt) in male and female newborns (sex)
-boxplot(birthwt ~ sex, data = nutricao, main="Birth Weight by Sex", xlab="Sex", ylab="Birth Weight (g)", names=c("Female", "Male"))
+# Graph the birth weight variable (pn) in male and female newborns (sexo)
+boxplot(pn ~ sexo, data = nutricao, main="Birth Weight by Sex", xlab="Sex", ylab="Birth Weight (g)", names=c("Female", "Male"))
 ```
 
-## 10. Graph the weight variable at 9 months (weight9) in babies taking vitamin C (vitc) and with the updated national vaccination plan (pnv)
+## 10. Graph the weight variable at 9 months (peso9) in babies taking vitamin C (vitc) and with the updated national vaccination plan (pnv)
 
 ```{r}
-# Graph the weight variable at 9 months (weight9) in babies taking vitamin C (vitc) and with the updated national vaccination plan (pnv)
-nutricao <- nutricao %>% mutate(vitc_label = ifelse(vitc == 1, "Taking Vitamin C", "Not Taking Vitamin C"),
-                                pnv_label = ifelse(pnv == 1, "Updated PNV", "Not Updated PNV"))
+# Graph the weight variable at 9 months (peso9) in babies taking vitamin C (vitc) and with the updated national vaccination plan (pnv)
+nutricao <- nutricao %>% mutate(vitc_label = ifelse(vitc == 1, "Taking", "Not Taking"),
+                                pnv_label = ifelse(pnv == 1, "Updated", "Not Updated"))
 par(mfrow=c(1,2))
-boxplot(weight9 ~ vitc_label, data = nutricao, main="Weight at 9 months by Vitamin C", xlab="Vitamin C Status", ylab="Weight at 9 months (g)")
-boxplot(weight9 ~ pnv_label, data = nutricao, main="Weight at 9 months by PNV", xlab="PNV Status", ylab="Weight at 9 months (g)")
+boxplot(peso9 ~ vitc_label, data = nutricao, main="Weight at 9 months by Vitamin C", xlab="Vitamin C Status", ylab="Weight at 9 months (g)")
+boxplot(peso9 ~ pnv_label, data = nutricao, main="Weight at 9 months by PNV", xlab="PNV Status", ylab="Weight at 9 months (g)")
 ```
 
-## 11. Create and graph the weight gain (inc_weight) variable that corresponds to the weight gain from birth (birthwt) to 9 months (weight9)
+## 11. Create and graph the weight gain (inc_weight) variable that corresponds to the weight gain from birth (pn) to 9 months (peso9)
 
 ```{r}
 # Create the weight gain (inc_weight) variable
-nutricao <- nutricao %>% mutate(inc_weight = weight9 - birthwt)
+nutricao <- nutricao %>% mutate(inc_weight = peso9 - pn)
 # Graph the weight gain (inc_weight) variable
 hist(nutricao$inc_weight, main="Weight Gain from Birth to 9 months", xlab="Weight Gain (g)")
 ```
@@ -239,7 +242,7 @@ This table of data with 300 records contains data related to sepsis admissions i
 
 ```{r}
 #Open the data uci_sepsis.xls
-uci_sepsis <- read_excel("C:/Users/João/OneDrive - Instituto Politécnico do Porto/Doutoramento/Repositório HEADS 25.26/Repositorio-HEADS-25.26/ANALYZE/uci_sepsis.xls")
+uci_sepsis <- read_excel("uci_sepsis.xls")
 # Rename the columns
 colnames(uci_sepsis) <- c("id_hospitalizacao", "sexo", "data_nascimento", "data_entrada_uci", "data_saida_uci","data_saida_hospital", "resultado_internamento")
 # Convert date columns to Date type with lubridate as_date
@@ -250,8 +253,8 @@ uci_sepsis <- uci_sepsis %>%
          data_saida_hospital = dmy(data_saida_hospital))
 # Create variables idade_entrada_uci and tempo_internamento_uci
 uci_sepsis <- uci_sepsis %>%
-  mutate(idade_entrada_uci = as.numeric(difftime(data_entrada_uci, data_nascimento, units = "weeks")) / 52.25,
-         tempo_internamento_uci = as.numeric(difftime(data_saida_uci, data_entrada_uci, units = "days")))
+  mutate(idade_entrada_uci = time_length(difftime(as.Date(data_entrada_uci), as.Date(data_nascimento)),"year"),
+         tempo_internamento_uci = time_length(difftime(as.Date(data_saida_uci), as.Date(data_entrada_uci)),"days"))
 #Graphically represent the age at ICU admission and the length of stay in the ICU
 par(mfrow=c(1,2))
 hist(uci_sepsis$idade_entrada_uci, main="Age at ICU admission",xlab="")
@@ -267,9 +270,9 @@ hist(uci_sepsis$tempo_internamento_uci, main="Length of stay in ICU", xlab="")
 #sd(uci_sepsis$tempo_internamento_uci, na.rm = T)
 # Table with the means and standard deviations of age at ICU admission and length of stay in ICU
 table <- uci_sepsis %>% summarise (mean_age = mean(idade_entrada_uci, na.rm = T), sd_age = sd(idade_entrada_uci, na.rm = T),
-                          mean_stay = mean(tempo_internamento_uci, na.rm = T), sd_stay = sd(tempo_internamento_uci, na.rm = T))
+                          mean_stay = median(tempo_internamento_uci, na.rm = T), sd_stay = IQR(tempo_internamento_uci, na.rm = T))
 # Rename table columns
-colnames(table) <- c("Mean Age at ICU Admission", "SD Age at ICU Admission", "Mean Length of Stay in ICU", "SD Length of Stay in ICU")
+colnames(table) <- c("Mean Age at ICU Admission (years)", "SD Age at ICU Admission (years)", "Median Length of Stay in ICU (days)", "IQR Length of Stay in ICU (days)")
 table
 ```
 
@@ -287,6 +290,6 @@ uci_sepsis <- uci_sepsis %>% mutate(resultado_label = case_when(
 # Create a column with survivor and deceased labels
 uci_sepsis <- uci_sepsis %>% mutate(survivor_deceased = ifelse(resultado_internamento == 1, "Survivor", "Deceased"))
 # Create a contingency table with the proportions of deceased in the female and male patient groups
-CrossTable(uci_sepsis$sexo_label, uci_sepsis$survivor_deceased, format="SPSS", prop.chisq=F, prop.c=F, prop.t=F, digits=1)
+CrossTable(uci_sepsis$sexo_label, uci_sepsis$survivor_deceased, format="SPSS", prop.chisq=F, prop.c=F, prop.t=F, digits=1, dnn = c("Sex", ""))
 ```
 
