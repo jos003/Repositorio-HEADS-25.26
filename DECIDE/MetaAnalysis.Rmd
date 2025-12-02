@@ -1,0 +1,499 @@
+---
+title: "MetaAnalysis"
+author: "João Silva"
+date: "2025-11-25"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Metafor package for binary outcomes
+
+
+## Installing and opening metafor package
+
+```{r, warning=F, message=F}
+#install.packages(c("metafor","tidyverse")) #Installs the metafor package
+library(metafor) #Opens the metafor package
+library(tidyverse) #Opens the tidyverse package
+```
+
+## Effect size calculation
+
+To demonstrate how to perform meta-analysis for binary outcomes, bcg dataset will be used.
+Please make sure that bcg.csv dataset has already been imported to your local environment.
+
+```{r}
+bcg <- read_csv("bcg.csv")      #Imports the bcg dataset   
+```
+
+```{r}
+#?escalc        #Checks the arguments for escalc() function, which allows for effect size calculation
+#tpos, neg, cpos, cneg - These are the names of the columns in the bcg dataset that contain the number of true positives, true negatives, control positives and control negatives, respectively.
+bcg <- escalc(measure="RR", ai=tpos, bi=tneg, ci=cpos, di=cneg, data=bcg)          #Computation of the effect size (log risk ratio) and of the corresponding sampling variance for each primary study
+head(bcg)
+```
+
+## Performing meta-analysis
+```{r}
+ma01 <- rma(yi=yi, vi=vi, data=bcg, slab=paste(author, year, sep=", "), method="REML")         #Meta-analysis following a random-effects model with the restricted maximum-likelihood estimator method for the amount of heterogeneity
+```
+
+```{r}
+ma01 <- rma(measure="RR", ai=tpos, bi=tneg, ci=cpos, di=cneg, data=bcg, slab=paste(author, year, sep=", "), method="REML")      
+#This is another possibility for performing meta-anlysis: Instead of calculating the effect size measure for each primary study and then perform meta-analysis, it is possible to do it all in a single step!
+# slab=paste(author, year, sep=", ") is used to create labels for each primary study in the format "author, year"
+ma01       #Shows the results of the meta-analysis
+```
+
+
+```{r}
+exp(c(ma01$beta, ma01$ci.lb, ma01$ci.ub))        #This expression allows for obtaining pooled estimates and the respective confidence interval bounds transformed into the natural scale. This is particularly needed in this case, as we performed a meta-analysis of log risk ratio. 
+```
+
+## Forest plot creation
+
+```{r}
+forest(ma01)      #Creates a forest plot for the meta-analysis we have performed based on the bcg dataset
+```
+
+```{r}
+forest.rma(ma01, transf=exp, order = order(bcg$year), showweights=TRUE)
+text(-7.75, -1.85, pos=4, cex=0.8, bquote(paste("Q Cochran p = ", .(formatC(ma01$QEp, digits=2, format="f")), "; ", I^2, " = ", .(formatC(ma01$I2, digits=1, format="f")), "%")))         # The "transf" argument is used to present results in the natural scale. The "order" argument is used to present primary studies sorted by year. Relative weights are shown if "showweights"=TRUE. The text() function adds text for heterogeneity.
+```
+
+```{r}
+forest.rma(ma01, transf=exp, showweights=TRUE, alim =c(0,2), xlim=c(-2.5,4.5), at=c(0,0.5,1,1.5,2), order = order(bcg$year), refline=1)
+text(-2.5,15, "Author(s) and Year",  pos=4)
+text(3,15, "Weight", pos=2)
+text(4.5,15, "RR [95% CI]", pos=2)
+text(3.7, -1.85, pos=4, cex=0.8, bquote(paste("p <0.001")))
+text(-2.5, -1.85, pos=4, cex=0.8, bquote(paste("Q Cochran p<0.001", "; ", I^2, " = ", .(formatC(ma01$I2, digits=1, format="f")), "%")))               # "alim" corresponds to the limit of the xx axis of the forest plot; "xlim" concerns the width of the plot; "at" locates the xx axis marks; "refline" locates the reference line. 
+```
+
+## Exploration of heterogeneity - Sensitivity analyses, meta-regression and subgroup analyses
+```{r}
+leave1out(ma01)        #Performs leave1out() sensitivity analysis
+# The output shows the results of the meta-analysis when each primary study is omitted one at a time.
+```
+
+
+```{r}
+mreg01_lat <- rma(yi=yi~ablat, vi=vi, data=bcg, method="REML")       #Univariable meta-regression with the latitude as a covariate
+mreg01_year <- rma(yi=yi~year, vi=vi, data=bcg, method="REML")       #Univariable meta-regression with the year as a covariate
+mreg01_alloc <- rma(yi=yi~alloc, vi=vi, data=bcg, method="REML")     #Univariable meta-regression with the allocation method as a covariate
+mreg01_lat      #Results of univariable meta-regression model with the latitude as covariate
+```
+
+```{r}
+mreg01_year     #Results of univariable meta-regression model with the year as covariate
+```
+
+```{r}
+mreg01_alloc    #Results of univariable meta-regression model with the allocation method as covariate
+```
+
+```{r}
+regplot(mreg01_lat)       #Bubble plot for the univariable meta-regression model with the latitude as covariate
+```
+
+
+```{r}
+regplot(mreg01_year)      #Bubble plot for the univariable meta-regression model with the year as covariate
+```
+
+```{r}
+mreg01_multi <- rma(yi=yi~ablat+year, vi=vi, data=bcg, method="REML")     #Multivariable meta-regression with latitude and year as covariates (not recommended in real practice with such a low number of primary studies)
+mreg01_multi                                                              #Results of the multivariable meta-regression model
+```
+
+
+```{r}
+ma01_random <- rma(yi=yi, vi=vi, data=bcg, method="REML", slab=paste(author, year, sep=", "), subset=alloc=="random")          #Subgroup analysis in relation to the allocation type: Subgroup of random allocation
+ma01_alternate <- rma(yi=yi, vi=vi, data=bcg, method="REML", slab=paste(author, year, sep=", "), subset=alloc=="alternate")    #Subgroup analysis in relation to the allocation type: Subgroup of alternate allocation
+ma01_system <- rma(yi=yi, vi=vi, data=bcg, method="REML", slab=paste(author, year, sep=", "), subset=alloc=="systematic")      #Subgroup analysis in relation to the allocation type: Subgroup of systematic allocation
+```  
+
+```{r}
+ma01_random       #Results of the subgroup analysis for studies with random sampling
+```
+
+```{r}
+ma01_alternate    #Results of the subgroup analysis for studies with alternate sampling
+```
+
+```{r}
+ma01_system       #Results of the subgroup analysis for studies with systematic sampling
+```
+
+## Forest plot with subgroup analysis
+```{r}
+par(mar=c(4,4,1,2)) #decrease margins so the full space is used
+res <- rma(ai=tpos, bi=tneg, ci=cpos, di=cneg, data=dat.bcg, measure="RR",slab=paste(author, year, sep=", "), method="REML") #fit random-effects model (use slab argument to define study labels)
+# set up forest plot (with 2x2 table counts added; rows argument is used
+forest(res, xlim=c(-16, 6), at=log(c(0.05, 0.25, 1, 4)), atransf=exp,ilab=cbind(dat.bcg$tpos, dat.bcg$tneg, dat.bcg$cpos, dat.bcg$cneg),ilab.xpos=c(-9.5,-8,-6,-4.5), cex=0.75, ylim=c(-1, 27),order=order(dat.bcg$alloc), rows=c(3:4,9:15,20:23),xlab="Risk Ratio", mlab="", psize=1)   #to specify exactly in which rows the outcomes will be plotted)
+text(-16, -1, pos=4, cex=0.75, bquote(paste("RE Model for All Studies (Q = ",.(formatC(res$QE, digits=2, format="f")), ", df = ", .(res$k - res$p),", p = ", .(formatC(res$QEp, digits=2, format="f")), "; ", I^2, " = ",.(formatC(res$I2, digits=1, format="f")), "%)"))) # add text with Q-value, dfs, p-value, and I^2 statistic
+op <- par(cex=0.75, font=4)  # set font expansion factor (as in forest() above) and use bold italic  # font and save original settings in object 'op'
+text(-16, c(24,16,5), pos=4, c("Systematic Allocation","Random Allocation","Alternate Allocation")) #add text for the subgroups
+par(font=2) # switch to bold font
+text(c(-9.5,-8,-6,-4.5), 26, c("TB+", "TB-", "TB+", "TB-")) #add column headings to the plot
+text(c(-8.75,-5.25),     27, c("Vaccinated", "Control"))
+text(-16,                26, "Author(s) and Year",  pos=4)
+text(6,                  26, "Risk Ratio [95% CI]", pos=2)
+par(op) #set par back to the original settings
+res.s <- rma(ai=tpos, bi=tneg, ci=cpos, di=cneg, data=dat.bcg, measure="RR",subset=(alloc=="systematic"), method="REML")  # fit random-effects model in the three subgroups
+res.r <- rma(ai=tpos, bi=tneg, ci=cpos, di=cneg, data=dat.bcg, measure="RR",subset=(alloc=="random"), method="REML")
+res.a <- rma(ai=tpos, bi=tneg, ci=cpos, di=cneg, data=dat.bcg, measure="RR",subset=(alloc=="alternate"), method="REML")
+addpoly(res.s, row=18.5, cex=0.75, atransf=exp, mlab="")#add summary polygons for the three subgroups
+addpoly(res.r, row= 7.5, cex=0.75, atransf=exp, mlab="")
+addpoly(res.a, row= 1.5, cex=0.75, atransf=exp, mlab="")
+text(-16, 18.5, pos=4, cex=0.75, bquote(paste("RE Model for Subgroup (Q = ",.(formatC(res.s$QE, digits=2, format="f")), ", df = ", .(res.s$k - res.s$p),", p = ", .(formatC(res.s$QEp, digits=2, format="f")), "; ", I^2, " = ",.(formatC(res.s$I2, digits=1, format="f")), "%)"))) # add text with Q-value, dfs, p-value, and I^2 statistic for subgroups
+text(-16, 7.5, pos=4, cex=0.75, bquote(paste("RE Model for Subgroup (Q = ",.(formatC(res.r$QE, digits=2, format="f")), ", df = ", .(res.r$k - res.r$p),", p = ", .(formatC(res.r$QEp, digits=2, format="f")), "; ", I^2, " = ",.(formatC(res.r$I2, digits=1, format="f")), "%)")))
+text(-16, 1.5, pos=4, cex=0.75, bquote(paste("RE Model for Subgroup (Q = ",.(formatC(res.a$QE, digits=2, format="f")), ", df = ", .(res.a$k - res.a$p),", p = ", .(formatC(res.a$QEp, digits=2, format="f")), "; ", I^2, " = ",.(formatC(res.a$I2, digits=1, format="f")), "%)")))
+```
+
+
+## Assessment of publication bias
+
+```{r}
+ranktest(ma01)    #Calculates the rank correlation test of Begg
+```
+
+### Funnel plot
+
+```{r}
+funnel(ma01)      #Obtention of the funnel plot
+# The funnel() function creates a funnel plot to visually assess publication bias.
+# In the funnel plot, each point represents a primary study, with the effect size on the x-axis and a measure of study precision (often standard error) on the y-axis.
+# A symmetrical funnel plot suggests no publication bias, while asymmetry may indicate potential bias.
+```
+
+### Funnel plot with trim-and-fill
+
+```{r}
+(ma01_tf <- trimfill(ma01))
+funnel(ma01_tf)              #Obtention of the funnel plot with trim-and-fill
+```
+
+## Obtention of other plots
+
+### Radial (Galbraith) plot
+
+```{r}
+radial(ma01)       #Obtention of the radial (Galbraith) plot
+```
+
+### L'Abbé plot
+
+```{r}
+labbe(ma01)        #Obtention of the L'Abb? plot
+```
+
+### Baujat plots
+
+```{r}
+baujat(ma01)       #Obtention of the Baujat plot
+```
+
+### GOSH plot
+
+```{r}
+plot(gosh(ma01))   #Obtention of the GOSH plot
+```
+
+# Metafor package for continuous outcomes
+
+## Effect size calculation
+
+```{r}
+#To demonstrate how to perform meta-analysis for binary outcomes, stroke dataset will be used.
+#Please make sure that stroke.csv dataset has already been imported to your local environment.
+stroke <- read_csv("stroke.csv")      #Imports the stroke dataset
+stroke <- as.data.frame(stroke)
+
+?escalc        #Checks the arguments for escalc() function, which allows for effect size calculation
+
+stroke <- escalc(measure="MD", n1i=n_spec, m1i=los_spec, sd1i=sd_spec, n2i=n_rout, m2i=los_rout, sd2i=sd_rout, data=stroke)          #Computation of the effect size (mean difference) and of the corresponding sampling variance for each primary study
+```
+
+## Performing meta-analysis
+
+```{r}
+ma02 <- rma(yi=yi, vi=vi, data=stroke, slab=paste(study, year, sep=", "), method="REML")         #Meta-analysis following a random-effects model with the restricted maximum-likelihood estimator method for the amount of heterogeneity
+
+
+#ma02 <- rma(measure="MD", n1i=n_spec, m1i=los_spec, sd1i=sd_spec, n2i=n_rout, m2i=los_rout, sd2i=sd_rout, data=stroke, slab=paste(study, year, sep=", "), method="REML")      #This is another possibility for performing meta-anlysis: Instead of calculating the effect size measure for each primary study and then perform meta-analysis, it is possible to do it all in a single step!
+
+ma02       #Shows the results of the meta-analysis
+```
+
+```{r}
+cumul(ma02)  #Shows the results for cumulative meta-analysis
+```
+
+## Forest plot creation
+
+```{r}
+forest.rma(ma02, showweights=TRUE, order = order(stroke$year), xlim=c(-350,350))
+text(-350,10.5, "Author(s) and Year",  pos=4)
+text(150,10.5, "Weight", pos=2)
+text(350,10.5, "RR [95% CI]", pos=2)
+text(265, -1.85, pos=4, cex=0.8, bquote(paste("p = ", .(formatC(ma02$pval, digits=3, format="f")))))
+text(-350, -1.8, pos=4, cex=0.8, bquote(paste("Q Cochran p<0.001", "; ", I^2, " = ", .(formatC(ma02$I2, digits=1, format="f")), "%")))
+```
+
+## Exploration of heterogeneity - Sensitivity analyses, meta-regression and subgroup analyses
+
+```{r}
+leave1out(ma02)        #Performs leave1out() sensitivity analysis
+```
+
+
+```{r}
+mreg02_year <- rma(yi=yi~year, vi=vi, data=stroke, method="REML")         #Univariable meta-regression with the year as a covariate
+
+mreg02_year     #Results of univariable meta-regression model with the year as covariate
+```
+
+
+```{r}
+mreg02_age <- rma(yi=yi~age_group, vi=vi, data=stroke, method="REML")     #Univariable meta-regression with the age group as a covariate
+
+mreg02_age      #Results of univariable meta-regression model with the age group as covariate
+```
+
+```{r}
+regplot(mreg02_year)       #Bubble plot for the univariable meta-regression model with the year as covariate
+```
+
+
+```{r}
+ma02_2010 <- rma(yi=yi, vi=vi, data=stroke, method="REML", slab=paste(study, year, sep=", "), subset=year>=2010)               #Subgroup analysis in relation to the year: Subgroup of post-2010 studies
+ma02_2010       #Results of the subgroup analysis for post-2010 studies
+```
+
+```{r}
+ma02_uk <- rma(yi=yi, vi=vi, data=stroke, method="REML", slab=paste(study, year, sep=", "), subset=region=="uk")               #Subgroup analysis in relation to the region: Subgroup of UK studies
+ma02_uk         #Results of the subgroup analysis for studies from the UK
+```
+
+## Assessment of publication bias
+
+```{r}
+ranktest(ma02)    #Calculates the rank correlation test of Begg
+```
+
+
+```{r}
+funnel(ma02)      #Obtention of the funnel plot
+```
+
+
+```{r}
+ma02_tf <- trimfill(ma02)
+funnel(ma02_tf)              #Obtention of the funnel plot with trim-and-fill
+```
+
+## Obtention of other plots
+
+### Radial (Galbraith) plot
+
+```{r}
+radial(ma02)       #Obtention of the radial (Galbraith) plot
+```
+
+### Baujat plots
+
+```{r}
+baujat(ma02)       #Obtention of the Baujat plot
+```
+
+### GOSH plot
+
+```{r}
+plot(gosh(ma02))   #Obtention of the GOSH plot
+```
+
+# Metafor package to perform meta-analysis according to the generic inverse variance method
+
+```{r}
+#To demonstrate how to perform meta-analysis according to the generic inverse variance method, stroke2 dataset will be used.
+stroke2 <- read_csv("stroke2.csv")
+stroke2 <- as.data.frame(stroke2)
+
+ma03 <- rma.uni(yi=mean_diff, vi=sem, data=stroke2, slab=paste(study, year, sep=", "), method="REML")      #We do not need to calculate effect measures - they had already been calculated
+
+ma03  #Shows the results of the meta-analysis
+```
+
+
+# Meta package for binary outcomes
+
+```{r}
+##Installing and opening meta package
+#install.packages("meta") #Installs the meta package
+library(meta)            #Opens the meta package
+```
+
+## Performing meta-analysis
+
+```{r}
+#To demonstrate how to perform meta-analysis for binary outcomes, bcg dataset will be used.
+#Please make sure that bcg.csv dataset has already been imported to your local environment.
+
+?metabin       #Checks the arguments for metabin() function, which allows for performing meta-analysis of binary outcomes
+
+ma04 <- metabin(data=bcg, event.e=tpos, n.e=tpos+tneg, event.c=cpos, n.c=cpos+cneg, method="Inverse", sm="RR", method.tau="REML", prediction=TRUE, studlab=paste(author,year))               #Meta-analysis weighting by the inverse variance and with the restricted maximum-likelihood estimator method for the amount of heterogeneity. The prediction argument allows for obtention of estimates of a hypothetical future study. 
+
+ma04       #Shows the results of the meta-analysis
+```
+
+## Forest plot creation
+
+```{r}
+forest(ma04, common=FALSE, prediction = TRUE, digits = 1)      #Creates a forest plot for the meta-analysis we have performed based on the bcg dataset. The "common=FALSE" expression is used to hide fixed effects model results. To hide random effects model results, we would use the expression "comb.random=FALSE". The "prediction" argument orders the presentation of the predicted interval. The number of decimal places is set by the "digits" argument. 
+```
+
+## Exploration of heterogeneity - Meta-regression and subgroup analyses
+
+```{r}
+mreg04_lat <- metareg(ma04, ablat)       #Univariable meta-regression with the latitude as a covariate
+mreg04_lat      #Results of univariable meta-regression model with the latitude as covariate
+```
+
+
+```{r}
+mreg04_year <- metareg(ma04, year)       #Univariable meta-regression with the year as a covariate
+mreg04_year     #Results of univariable meta-regression model with the year as covariate
+```
+
+
+```{r}
+mreg04_alloc <- metareg(ma04, alloc)     #Univariable meta-regression with the allocation method as a covariate
+mreg04_alloc    #Results of univariable meta-regression model with the allocation method as covariate
+```
+
+
+```{r}
+bubble(mreg04_lat)                            #Plots the results of a meta-regression for a continuous covariate
+```
+
+```{r}
+mreg04_multi <- metareg(ma04, ablat+year)     #Multivariable meta-regression with latitude and year as covariates (not recommended in real practice with such a low number of primary studies)
+mreg04_multi                                  #Results of the multivariable meta-regression model
+```
+
+
+```{r}
+ma04_sub <- metabin(data=bcg, event.e=tpos, n.e=tpos+tneg, event.c=cpos, n.c=cpos+cneg, method="Inverse", sm="RR", method.tau="REML", prediction=TRUE, studlab=paste(author,year), byvar=alloc)           #Subgroup analysis (in relation to the allocation type): Analysis in a a meta-analysis performed de novo.
+
+#ma04_sub <- update(ma04, byvar=alloc)     #Alternative method of performing subgroup analysis when there is an already existent meta-analysis. This subgroup analysis is based on the allocation method
+ma04_sub                                  #Results of the subgroup analysis based on the allocation method
+```
+
+
+```{r}
+forest(ma04_sub, prediction=FALSE, common=FALSE, xlim=c(0.05,10), digits=1, digits.sd=1)        #Plots the results of subgroup analyses
+```
+
+## Assessment of publication bias
+
+```{r}
+metabias(ma04, method="rank")    #Calculates the rank correlation test of Begg. To perform Begg's rank correlation test, the argument "method" must be set to "rank". For Egger's linear regression test: method="linreg". Particularly for binary outcomes, Harbord's test (method="score") and Peter's test (method="peters") may be particularly interesting.
+```
+
+
+```{r}
+funnel(ma04, common=FALSE)   #Obtention of the funnel plot
+```
+
+```{r}
+ma04_tf <- trimfill(ma04, common=FALSE)
+funnel(ma04_tf) #Obtention of the funnel plot with trim-and-fill
+```
+
+# Meta package for continuous outcomes
+
+## Performing meta-analysis
+
+```{r}
+#To demonstrate how to perform meta-analysis for continuous outcomes, stroke dataset will be used.
+#Please make sure that stroke.csv dataset has already been imported to your local environment.
+
+?metacont       #Checks the arguments for metacont() function, which allows for performing meta-analysis of continuous outcomes
+
+ma05 <- metacont(data=stroke, n.e=n_spec, mean.e=los_spec, sd.e=sd_spec, n.c=n_rout, mean.c=los_rout, sd.c=sd_rout, sm="MD", method.tau="REML", prediction=TRUE, studlab=paste(study,year))               #Meta-analysis weighting by the inverse variance and with the restricted maximum-likelihood estimator method for the amount of heterogeneity. The prediction argument allows for obtention of estimates of a hypothetical future study. 
+
+ma05       #Shows the results of the meta-analysis
+```
+
+
+```{r}
+ma05a <- metacont(data=stroke, n.e=n_spec, mean.e=los_spec, sd.e=sd_spec, n.c=n_rout, mean.c=los_rout, sd.c=sd_rout, sm="MD", method.tau="REML", prediction=TRUE, hakn=TRUE, studlab=paste(study,year))   #Meta-analysis with the Hartung-Knapp adjustment.
+```
+
+## Forest plot creation
+
+```{r}
+forest(ma05, common=FALSE, prediction=FALSE, xlim=c(-75,50), digits=1, digits.sd=1)      #Creates a forest plot for the meta-analysis we have performed based on the stroke dataset. The "common=FALSE" argument is used to hide fixed effects model results. In this example, the predicted interval will not be presented  ("prediction=FALSE"). The "xlim" argument sets the limits of the xx axis of the forest plot. The number of decimal places is set by the "digits" arguments. 
+```
+
+## Exploration of heterogeneity - Meta-regression and subgroup analyses
+
+```{r}
+mreg05_year <- metareg(ma05, year)       #Univariable meta-regression with the year as a covariate
+mreg05_year     #Results of univariable meta-regression model with the year as covariate
+```
+
+
+```{r}
+mreg05_age <- metareg(ma05, age_group)   #Univariable meta-regression with the age group as a covariate
+mreg05_age      #Results of univariable meta-regression model with the age group as covariate
+```
+
+
+```{r}
+ma05_sub <- metacont(data=stroke, n.e=n_spec, mean.e=los_spec, sd.e=sd_spec, n.c=n_rout, mean.c=los_rout, sd.c=sd_rout, sm="MD", method.tau="REML", prediction=TRUE, studlab=paste(study,year), byvar=age_group)           #Subgroup analysis (in relation to the age group): Analysis ina a meta-analysis performed de novo.
+
+#ma05_sub <- update(ma05, byvar=age_group)     #Alternative method of performing subgroup analysis when there is an already existent meta-analysis. This subgroup analysis is based on the age group.
+ma05_sub  #Results of the subgroup analysis based on the age group
+```
+
+
+```{r}
+forest(ma05_sub, prediction=FALSE, common=FALSE, xlim=c(-100,50), digits=1, digits.sd=1)        #Plots the results of subgroup analyses
+```
+
+## Assessment of publication bias
+
+```{r}
+metabias(ma05, method="rank", k.min=9)    #Calculates the rank correlation test of Begg. To perform Begg's rank correlation test, the argument "method" must be set to "rank". For Egger's linear regression test: method="linreg". Particularly for binary outcomes, Harbord's test (method="score") and Peter's test (method="peters") may be particularly interesting. k.min argument allows execution of this test for <10 primary studies.
+```
+
+```{r}
+funnel(ma05, common=FALSE)   #Obtention of the funnel plot
+```
+
+```{r}
+ma05_tf <- trimfill(ma05, common=FALSE)
+funnel(ma05_tf)                                #Obtention of the funnel plot with trim-and-fill
+```
+
+
+# Metafor package to perform meta-analysis according to the generic inverse variance method
+
+```{r}
+#To demonstrate how to perform meta-analysis according to the generic inverse variance method, stroke2 dataset will be used.
+stroke2 <- as.data.frame(stroke2)
+
+ma06 <-  metagen(data=stroke2, TE=mean_diff, seTE=sem, sm="MD", prediction=TRUE, studlab=paste(study, year))      #In meta package, metagen() function allows to perform meta-analysis based on the generic inverse variance method
+
+ma06  #Shows the results of the meta-analysis
+```
+
+
+```{r}
+forest(ma06, random=FALSE, prediction=TRUE, xlim=c(-16,5), digits=1, digits.se = 1)     #Creates a forest plot for the meta-analysis performed based on the generic inverse variance method
+```
