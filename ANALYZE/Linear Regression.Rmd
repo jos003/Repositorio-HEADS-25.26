@@ -1,0 +1,107 @@
+---
+title: "Linear Regression"
+author: "João Silva"
+date: "2026-01-12"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1. The file tas_tad.sav contains the age and values of the systolic (SBP) and diastolic blood
+pressure (DBP) in a random sample of 300 Portuguese individuals.
+
+```{r}
+# Install packages if not already installed
+if (!require(tidyverse)) install.packages("tidyverse")
+# Load the necessary libraries
+library(tidyverse)
+# Load the data
+tas_tad <- haven::read_sav("tas_tad.sav")
+```
+
+## a. Represent graphically the possible relation between age (variable idade) and SBP
+(variable tas).
+
+```{r}
+ggplot(tas_tad, aes(x = idade, y = tas)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +
+  labs(title = "Relation between Age and Systolic Blood Pressure (SBP)",
+       x = "Age (idade)",
+       y = "Systolic Blood Pressure (SBP - tas)") +
+  theme_minimal()
+```
+
+
+## b. Represent graphically the possible relation between SBP (variable tas) and DBP
+(variable tad).
+
+## c. What is the Pearson correlation coefficient (r) between age (variable idade) and SBP
+(variable tas)?
+
+## d. What is the Pearson correlation coefficient (r) between SBP (variable tas) and DBP
+(variable tad)?
+
+## e. What is the determination coefficient (R2) for the relation between age and SBP? What
+is the meaning of this value?
+
+##f. What is the determination coefficient (R2) for the relation between SBP and DBP? What
+is the meaning of this value?
+
+## g. Taking into account the relationship of the SBP (variable tas) with age (variable idade)
+or with weight (variable peso), indicate which of the two variables - age or weight -
+best explains the variability observed in the SBP.
+
+# 2. The file alcohol.sav contains a set of variables relating to 454 newborns from three
+hospitals, including data related to mother of newborns, to pregnancy, to exposures and
+habits during pregnancy, to delivery and the newborn itself at the time of delivery.
+
+## a. Build a scatterplot to represent the relationship between the weight of the newborn
+at birth (variable birthwt) and the gestational age (variable gestlmp). Comment on this
+chart.
+
+## b. Build a model that allows you to perceive and predict the behavior of the birth weight
+(variable birthwt) as a function of the gestational age (variable gestlmp).
+
+## c. Write the function (equation of the line) associated with the constructed linear model.
+
+## d. What is the value and respective 95% confidence interval of the ordinate at origin of
+the model and what is the interpretation of this parameter?
+
+## e. What is the value and respective 95% confidence interval of the model slope and what
+is the interpretation of this parameter?
+
+## f. What is the model's predicted value for the weight of a newborn child 38 weeks'
+gestational age? Compare this value with the average newborn weights at 38 weeks of
+gestational age.
+
+## g. Check the value of the coefficient of determination (R2) for this model, interpret its
+value and confirm that it is equal to the ratio between the sum of squares explained
+by the regression model and the total sum of squares.
+
+## h. What are the fundamental assumptions that underlie this simple linear regression
+model and that make the calculated parameter estimates valid?
+
+## i. Check the model's assumptions by analyzing the residuals. Check the normality of the
+residuals distribution, through the analysis of the histogram of the residuals, and
+homoscedasticity, through the analysis of standardized residuals distribution
+depending on the standardized predicted values.
+
+# 3. Consider the data table bmd_drug.sav, which consists of 10268 recordings related to body
+mineral density (BMD) and other possibly associated variables, including height (variable
+altura), weight (variable peso) and age (variable idade).
+
+## a. Compute the body mass index (BMI).
+
+## b. Categorize the BMI in the following classes: <25 kg/m2, 25-30 kg/m2, >30 kg/m2.
+
+## c. Are there differences in the BMD (variable bmdtot) mean between the BMI categories?
+
+## d. Are there differences in the BMD (variable bmdtot) between the BMI categories
+adjusting for age?
+
+## e. Is the loss of BMD associated with age equal in the different groups of BMI?
+
+## f. Evaluate the final model.
