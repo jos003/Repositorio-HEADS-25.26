@@ -1,0 +1,195 @@
+---
+title: "Your First Machine Learning Project in R"
+author: "Based on Jason Brownlee's Tutorial"
+output: html_document
+---
+
+# 1. Install and Load Packages
+
+First, we need to install and load the necessary packages. The tutorial relies heavily on the `caret` package. Note: The source comments suggest installing `ellipse` for specific plots [1].
+
+```{r setup, message=FALSE, warning=FALSE}
+# Install packages (Run these lines once in the console if not installed)
+# install.packages("caret", dependencies=c("Depends", "Suggests"))
+# install.packages("ellipse")
+# Load the package
+library(caret)
+```
+
+2. Load the Data
+We will use the famous iris dataset available in R.
+
+```{r setup, message=FALSE, warning=FALSE}
+# Attach the iris dataset to the environment
+data(iris)
+# Rename the dataset
+dataset <- iris
+```
+
+3. Create a Validation Dataset
+We split the loaded dataset into two parts: 80% for training and 20% for validation to hold back for final testing.
+
+```{r setup, message=FALSE, warning=FALSE}
+# Create a list of 80% of the rows in the original dataset we can use for training
+validation_index <- createDataPartition(dataset$Species, p=0.80, list=FALSE)
+
+# Select 20% of the data for validation
+validation <- dataset[-validation_index,]
+
+# Use the remaining 80% of data to training and testing the models
+dataset <- dataset[validation_index,]
+```
+
+4. Summarize Dataset
+We inspect the dimensions, types, class levels, and statistical summary of the data.
+
+```{r setup, message=FALSE, warning=FALSE}
+# Dimensions of dataset
+dim(dataset)
+```
+
+
+```{r setup, message=FALSE, warning=FALSE}
+# List types for each attribute
+sapply(dataset, class)
+```
+
+
+```{r setup, message=FALSE, warning=FALSE}
+# Take a peek at the first 5 rows of the data
+head(dataset)
+```
+
+
+```{r setup, message=FALSE, warning=FALSE}
+# List the levels for the class
+levels(dataset$Species)
+```
+
+
+```{r setup, message=FALSE, warning=FALSE}
+# Summarize the class distribution
+percentage <- prop.table(table(dataset$Species)) * 100
+cbind(freq=table(dataset$Species), percentage=percentage)
+
+# Summarize attribute distributions
+summary(dataset)
+```
+
+5. Visualize Dataset
+Univariate Plots
+We split the input (x) and output (y) to create individual plots.
+
+```{r setup, message=FALSE, warning=FALSE}
+# Split input and output
+x <- dataset[,1:4]
+y <- dataset[,5]
+
+# Boxplot for each attribute on one image
+par(mfrow=c(1,4))
+for(i in 1:4) {
+  boxplot(x[,i], main=names(iris)[i])
+}
+```
+
+
+```{r setup, message=FALSE, warning=FALSE}
+# Reset layout
+par(mfrow=c(1,1))
+
+# Barplot for class breakdown
+plot(y)
+```
+
+Multivariate Plots
+We visualize the interactions between variables. Note: featurePlot with plot="ellipse" requires the ellipse package installed.
+
+```{r setup, message=FALSE, warning=FALSE}
+# Scatterplot matrix
+featurePlot(x=x, y=y, plot="ellipse")
+```
+
+
+```{r setup, message=FALSE, warning=FALSE}
+# Box and whisker plots for each attribute
+featurePlot(x=x, y=y, plot="box")
+```
+
+
+```{r setup, message=FALSE, warning=FALSE}
+# Density plots for each attribute by class value
+scales <- list(x=list(relation="free"), y=list(relation="free"))
+featurePlot(x=x, y=y, plot="density", scales=scales)
+```
+
+6. Evaluate Algorithms
+We set up a test harness using 10-fold cross-validation and build 5 different models (LDA, CART, kNN, SVM, RF).
+
+```{r setup, message=FALSE, warning=FALSE}
+# Run algorithms using 10-fold cross validation
+control <- trainControl(method="cv", number=10)
+metric <- "Accuracy"
+
+# a) Linear algorithms
+set.seed(7)
+fit.lda <- train(Species~., data=dataset, method="lda", metric=metric, trControl=control)
+
+# b) Nonlinear algorithms
+# CART
+set.seed(7)
+fit.cart <- train(Species~., data=dataset, method="rpart", metric=metric, trControl=control)
+
+# kNN
+set.seed(7)
+fit.knn <- train(Species~., data=dataset, method="knn", metric=metric, trControl=control)
+
+# c) Advanced algorithms
+# SVM
+set.seed(7)
+fit.svm <- train(Species~., data=dataset, method="svmRadial", metric=metric, trControl=control)
+
+# Random Forest
+set.seed(7)
+fit.rf <- train(Species~., data=dataset, method="rf", metric=metric, trControl=control)
+```
+
+7. Select Best Model
+We summarize the results and compare the accuracy of the models.
+
+```{r setup, message=FALSE, warning=FALSE}
+# Summarize accuracy of models
+results <- resamples(list(lda=fit.lda, cart=fit.cart, knn=fit.knn, svm=fit.svm, rf=fit.rf))
+summary(results)
+```
+
+
+```{r setup, message=FALSE, warning=FALSE}
+# Compare accuracy of models
+dotplot(results)
+```
+
+
+```{r setup, message=FALSE, warning=FALSE}
+# Summarize Best Model (LDA)
+print(fit.lda)
+```
+
+8. Make Predictions
+Finally, we use the best model (LDA) to make predictions on the validation set we held back at the beginning.
+
+```{r setup, message=FALSE, warning=FALSE}
+# Estimate skill of LDA on the validation dataset
+predictions <- predict(fit.lda, validation)
+confusionMatrix(predictions, validation$Species)
+```
+
+### Explanation of the Steps
+
+1.  **Installation and Loading:** The code begins by installing the `caret` package (and `ellipse` for specific plots) if they are not already on your system, as this is the primary library used for the project [1, 20, 21].
+2.  **Data Loading:** The script loads the built-in Iris dataset and renames it to `dataset` for consistency [2].
+3.  **Validation Split:** It uses `createDataPartition` to split the data into 80% for training and 20% for validation. This ensures we have unseen data to test the final model's accuracy [3].
+4.  **Summary:** The code generates various statistical summaries, including dimensions, attribute types, and class distributions, to understand the data structure [4-9, 22].
+5.  **Visualization:** It separates inputs (`x`) and outputs (`y`) to create boxplots and barplots. It also uses `featurePlot` to create scatterplot matrices and density plots to visualize relationships [10-14].
+6.  **Model Training:** The script defines a 10-fold cross-validation control and trains 5 different algorithms: Linear Discriminant Analysis (LDA), Classification and Regression Trees (CART), k-Nearest Neighbors (kNN), Support Vector Machines (SVM), and Random Forest (RF) [15, 16].
+7.  **Comparison:** It compares the models using `resamples` and visualizes the accuracy spread using `dotplot`. In this tutorial, LDA was identified as the most accurate model [17, 18, 23].
+8.  **Prediction:** The final step runs the LDA model on the validation dataset and uses a confusion matrix to verify the accuracy on new data [19].
